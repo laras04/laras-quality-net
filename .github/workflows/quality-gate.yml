@@ -1,0 +1,33 @@
+name: Quality Gate
+
+on:
+  pull_request:
+
+jobs:
+
+  quality:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Install Gems
+        working-directory: api
+        run: bundle install
+
+      - name: Check Pull Request Template
+        run: |
+          echo "${{ github.event.pull_request.body }}" > pr.txt
+          bash .github/scripts/check_pr.sh "$(cat pr.txt)"
+
+      - name: Run RSpec
+        working-directory: api
+        run: bundle exec rspec
