@@ -1,7 +1,7 @@
 # BUG-001 – Generated Interview Invitation URL Points to Backend Instead of Frontend
 
 ## Severity
-**P1 – Major**
+**P0 – Blocker**
 
 ## Area
 Assessment → Invite Candidate
@@ -109,7 +109,7 @@ Open
 # BUG-002 – Assessment API Allows Creation Without Any Skills
 
 ## Severity
-**P2 – Minor**
+**P1 – Major**
 
 ## Area
 Assessment → Create Assessment (Backend API)
@@ -228,6 +228,199 @@ Alternatively, implement an equivalent validation within the model or controller
 - API returns **201 Created** instead of a validation error.
 - The created assessment appears in the assessment list with **0 skills**.
 - Candidate invitation can still be generated for the invalid assessment.
+
+---
+
+## Status
+Open
+
+
+# BUG-003 – Assessment Creation Exposes Database Exception for Excessively Long Role Title
+
+## Severity
+**P2 – Minor**
+
+## Area
+Assessment → Create Assessment
+
+## Summary
+
+Creating an assessment with a Role Title longer than the maximum allowed length causes the application to expose an internal PostgreSQL database exception instead of returning a user-friendly validation error.
+
+The backend does not properly validate the input before attempting to save it to the database.
+
+---
+
+## Impact
+
+Users are unable to create an assessment when the Role Title exceeds the maximum allowed length.
+
+Instead of receiving a clear validation message, the application exposes an internal PostgreSQL exception (`PG::StringDataRightTruncation`) to the user, resulting in poor user experience and leaking internal implementation details.
+
+---
+
+## Steps to Reproduce
+
+1. Login as an administrator.
+2. Navigate to **New Assessment**.
+3. Enter a Role Title longer than **255 characters**.
+4. Fill the remaining required fields.
+5. Click **Save & Create Session**.
+
+---
+
+## Expected Result
+
+The application should validate the Role Title length before saving.
+
+Example:
+
+```http
+HTTP/1.1 422 Unprocessable Entity
+```
+
+```json
+{
+  "errors": [
+    "Role title must not exceed 255 characters."
+  ]
+}
+```
+
+---
+
+## Actual Result
+
+The application displays the following error:
+
+```text
+PG::StringDataRightTruncation:
+ERROR: value too long for type character varying(255)
+```
+
+The assessment is not created, and the internal database exception is exposed to the user.
+
+---
+
+## Root Cause Analysis
+
+The backend does not validate the maximum length of the Role Title before persisting the assessment.
+
+As a result, the oversized value reaches the PostgreSQL database, which rejects it because it exceeds the `VARCHAR(255)` column limit.
+
+The database exception is then returned directly to the client instead of being handled as a validation error.
+
+---
+
+## Recommendation
+
+Implement server-side validation for the Role Title length before saving the assessment.
+
+Example:
+
+```ruby
+validates :name,
+          presence: true,
+          length: { maximum: 255 }
+```
+
+Return a validation response such as **HTTP 422 Unprocessable Entity** with a clear and user-friendly error message instead of exposing internal database exceptions.
+
+---
+
+## Evidence
+
+- Enter a Role Title longer than **255 characters**.
+- Click **Save & Create Session**.
+- The assessment is not created.
+- The UI displays:
+
+```
+PG::StringDataRightTruncation:
+ERROR: value too long for type character varying(255)
+```
+
+- No validation message is shown before the request reaches the database.
+
+---
+
+## Status
+Open
+
+
+# BUG-004 – Insufficient Spacing Between "Expected Skills" Label and "Add Skill" Button
+
+## Severity
+**P3 – Cosmetic**
+
+## Area
+Vacancies → Edit Vacancy
+
+## Summary
+
+The **"Add skill"** button is displayed immediately adjacent to the **"Expected skills"** label without sufficient spacing, resulting in a cluttered and less readable interface.
+
+---
+
+## Impact
+
+This issue does not affect functionality but reduces visual clarity and overall user experience by making the interface appear unpolished.
+
+---
+
+## Steps to Reproduce
+
+1. Login as an administrator.
+2. Navigate to **Vacancies**.
+3. Open an existing vacancy.
+4. Click **Edit**.
+5. Observe the **Expected skills** section.
+
+---
+
+## Expected Result
+
+The **"Expected skills"** label and **"Add skill"** button should have adequate spacing or alignment to improve readability.
+
+Example:
+
+```
+Expected skills
+
+[ Add skill ]
+```
+
+or
+
+```
+Expected skills                      [ Add skill ]
+```
+
+---
+
+## Actual Result
+
+The label and button are displayed too close together:
+
+```
+Expected skillsAdd skill
+```
+
+making the UI appear crowded.
+
+---
+
+## Recommendation
+
+Adjust the layout by adding appropriate spacing or alignment between the label and the action button using margin, padding, or layout components.
+
+---
+
+## Evidence
+
+- Open **Edit Vacancy** page.
+- Observe the **Expected skills** section.
+- The **Add skill** button is rendered immediately next to the label without spacing.
 
 ---
 
