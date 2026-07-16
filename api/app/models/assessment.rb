@@ -16,4 +16,14 @@ class Assessment < ApplicationRecord
   accepts_nested_attributes_for :assessment_skills,
                                  allow_destroy: true,
                                  reject_if: :all_blank
+                          
+  validate :must_have_at_least_one_skill
+
+  private
+
+  def must_have_at_least_one_skill
+    if assessment_skills.empty?
+      errors.add(:assessment_skills, "must contain at least one skill")
+    end
+  end
 end
